@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using NotDownwell.Scenes;
+using System;
 
 namespace NotDownwell
 {
@@ -12,6 +13,7 @@ namespace NotDownwell
         public int gems;
         public int combo;
         public int immune;
+        public const int immuneMax = 60;
         //体力
         public const int initLife = 4;
         public int maxLife;
@@ -37,8 +39,8 @@ namespace NotDownwell
             gameOver = 0;
             gems = 0;
             combo = 0;
-            width = 24;
-            heigth = 32;
+            width = 22;
+            heigth = 28;
             hitBox = new HitBox(position, Size);
             maxLife = statLife = initLife;
             maxEnergy = statEnergy = initEnergy;
@@ -50,6 +52,7 @@ namespace NotDownwell
             jumpTimeMax = 5;
             jumpTime = 0;
             gravity = defGrav;
+            maxFrame = 4;
         }
         public void ResetPlayerPerFrame()
         {
@@ -71,14 +74,16 @@ namespace NotDownwell
         {
             if (gameOver > 0)
                 return;
+            float accH = 0.6f;
+            float accV = 0.4f;
             if (Keyboard.GetState().IsKeyDown(Keys.D))
             {
-                velocity.X += 0.6f;
+                velocity.X += accH;
                 controlR = false;
             }
             if (Keyboard.GetState().IsKeyDown(Keys.A))
             {
-                velocity.X -= 0.6f;
+                velocity.X -= accH;
                 controlL = false;
             }
             if (Keyboard.GetState().IsKeyDown(Keys.Space) && isJumping)//ジャンプ長押し中
@@ -86,7 +91,7 @@ namespace NotDownwell
                 jumpTime++;
                 if (jumpTime > jumpTimeMax)
                     isJumping = false;
-                velocity.Y -= 0.4f;
+                velocity.Y -= accV;
             }
             else if (Utils.KeyJustPressed(Keys.Space))
             {
@@ -95,7 +100,8 @@ namespace NotDownwell
                 {
                     if (statEnergy > 0)
                     {
-                        Sound.Jump.Play(0.5f, 0f, 0f);
+                        Bullet.SpawnBullet(Center + Vector2.UnitY * (heigth / 2), Vector2.UnitY * 8f);
+                        Sound.Jump.Play(0.1f, 0f, 0f);
                         velocity.Y = -2f;
                         statEnergy--;
                         justShot = true;
@@ -218,20 +224,22 @@ namespace NotDownwell
             {
                 bool damaged = false;
                 Enemy enemy = target as Enemy;
-                if (oldPosition.Y < position.Y)//落下中の場合
+                //TODO: 踏みつけ直前にジャンプし、下方向の敵から衝突されるとダメージを受ける不具合の修正
+                //if (oldPosition.Y < position.Y)//落下中の場合
                 {
                     float dif = position.Y - oldPosition.Y;
                     HitBox hb = new HitBox(oldPosition, Size);
                     //すり抜け防止のため、移動した区間の判定を補完
                     for (float j = oldPosition.Y; j <= position.Y; j++)
                     {
-                        hb.X = MathHelper.Lerp(position.X, oldPosition.X, (position.Y - j) / dif);
-                        hb.Y++;//判定のy座標のみ変更
+                        hb.X = MathHelper.Lerp(position.X, oldPosition.X, (position.Y - j) / dif);//xの補完
+                        hb.Y++;//判定のy座標変更
                         if (hb.Intersect(target.hitBox))
                         {
                             //Debug.WriteLine(hb.Y + heigth + "/"+ enemy.position.Y);
-                            if (enemy.CanStomp && hb.Y <= enemy.position.Y)//踏みつけ
+                            if (enemy.CanStomp && hb.Y <= enemy.Center.Y)//踏みつけ
                             {
+                                Main.gameScene.gameCamera.SetShake();
                                 statEnergy = maxEnergy;
                                 combo++;
                                 velocity.Y = -4f;
@@ -243,18 +251,20 @@ namespace NotDownwell
                         }
                     }
                 }
-                else if (hitBox.Intersect(target.hitBox))
+                /*if (hitBox.Intersect(target.hitBox))
                 {
                     if (immune <= 0)
                         damaged = true;
-                }
+                }*/
                 if (damaged)
                 {
-                    Sound.Hurt.Play(0.5f, 0f, 0f);
+                    Main.gameScene.gameCamera.SetShake(20, 4);
+                    Sound.Hurt.Play(0.1f, 0f, 0f);
                     combo = 0;
-                    immune = 60;
+                    immune = immuneMax;
                     if (--statLife <= 0)
                     {
+                        Main.gameScene.gameCamera.SetShake(60, 12);
                         statLife = 0;
                         //ゲームオーバー
                         gameOver++;
@@ -264,11 +274,48 @@ namespace NotDownwell
             }
             return false;
         }
+        public override void FrameUpdate()
+        {
+            if (velocity != Vector2.Zero)
+            {
+                //移動中
+                if (velocity.Y == 0f)
+                {
+                    //地上平行移動
+                    if (++frameCounter > 4)
+                    {
+                        frameCounter = 0;
+                        if (++frame >= maxFrame)
+                            frame = 0;
+                    }
+                }
+                else
+                {
+                    frame = 1;//落下中のフレームは固定
+                    if (velocity.Y < -0.5f)//ジャンプ中
+                        frame = 2;
+                }
+            }
+            else
+            {
+                //棒立ち状態
+                if (++frameCounter > 8)
+                {
+                    frameCounter = 0;
+                    if (++frame >= maxFrame)
+                        frame = 0;
+                }
+            }
+            if (Math.Abs(velocity.X) >= 1)
+                direction = Math.Sign(velocity.X);
+        }
         public override void Draw(SpriteBatch spriteBatch)
         {
             Color color = immune > 0 ? Color.LightYellow : Color.White;
-            Texture2D texture = AssetHelper.GetTexture("Placeholder");
-            spriteBatch.Draw(texture, Center, new Rectangle(0, 0, width, heigth), color, rotation, Size / 2f, scale, SpriteEffects.None, 0f);
+            Texture2D texture = velocity != Vector2.Zero ? AssetHelper.GetTexture("Player_move") : AssetHelper.GetTexture("Player_idle");
+            int frameHeight = texture.Height / maxFrame;//フレーム毎の高さ
+            Rectangle rectangle = new Rectangle(0, frameHeight * frame, texture.Width, frameHeight);
+            spriteBatch.Draw(texture, Center, rectangle, color, rotation, rectangle.Size.ToVector2() / 2f, scale, direction == -1 ? SpriteEffects.FlipHorizontally : SpriteEffects.None, 0f);
         }
     }
 }

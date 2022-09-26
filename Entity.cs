@@ -23,6 +23,10 @@ namespace NotDownwell
         public bool collideX;//左右の壁などに衝突した際
         public bool collideY;
         public HitBox hitBox;//衝突判定
+        //描画
+        public int frameCounter;//フレーム用カウンター
+        public int frame;//現在のフレーム(0~)
+        public int maxFrame = 1;//フレーム数
         public Vector2 Size
         {
             get => new Vector2(width, heigth);
@@ -34,6 +38,10 @@ namespace NotDownwell
         }
         public float rotation;
         public float scale = 1f;
+        /// <summary>
+        /// 1 => 右 -1 => 左 
+        /// </summary>
+        public int direction = 1;
         public Entity()
         {
         }
@@ -42,8 +50,7 @@ namespace NotDownwell
 
         }
         /// <summary>
-        /// エリアの左右及び最下層(予定)との衝突確認
-        /// 速度調整
+        /// エリアの左右との衝突確認、速度調整
         /// </summary>
         public virtual void CheckAreaCollide()
         {
@@ -62,6 +69,13 @@ namespace NotDownwell
         }
         public virtual bool CheckCollision(Entity target) => hitBox.Intersect(target.hitBox);
         public virtual void Kill()
+        {
+
+        }
+        /// <summary>
+        /// エンティティのフレーム周りのアップデートを行う
+        /// </summary>
+        public virtual void FrameUpdate()
         {
 
         }

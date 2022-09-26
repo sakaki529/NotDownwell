@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace NotDownwell.Scenes
@@ -13,6 +14,7 @@ namespace NotDownwell.Scenes
         public static float BorderR => Main.ScreenSize.X / 2f + AreaSize / 2f;
         public Camera gameCamera;
         public Player player;
+        public List<Bullet> bullets;
         public List<Enemy> enemies;
         public float maxDepth;//最大深度
         public int currentScore;//現在のスコア
@@ -21,6 +23,7 @@ namespace NotDownwell.Scenes
         {
             gameTime = 0;
             player = new Player() { position = new Vector2(Main.ScreenSize.X / 2f, 0f) };//ゲームを通して使用するプレイヤーの宣言
+            bullets = new List<Bullet>();
             enemies = new List<Enemy>();
             gameCamera = new Camera();
             maxDepth = 0;
@@ -40,14 +43,49 @@ namespace NotDownwell.Scenes
             gameTime++;
             if (Utils.KeyJustPressed(Keys.Escape))
                 MoveScene(this, Main.menuScene);
-            if (gameTime % 30 == 0 && gameTime > 120)
+            int spawnCT = 40;
+            if (gameTime % spawnCT == 0 && gameTime > 120)
             {
-                Enemy.SpawnEnemy(new Vector2(Main.rand.NextFloat(BorderL, BorderR), player.position.Y + Main.ScreenSize.Y + (Main.ScreenSize.Y * 0.2f * Main.rand.NextFloat())),Vector2.Zero, Main.rand.Next(1, 5));
+                //進むごとに敵の種類が増える
+                List<int> pool = new List<int>() { EnemyID.Mono, EnemyID.Jelly, EnemyID.Bat };
+                if (maxDepth > 8000)
+                    pool.Add(EnemyID.RedEye);
+                if (maxDepth > 16000)
+                    pool.Add(EnemyID.Squid);
+                if (maxDepth > 24000)
+                    pool.Add(EnemyID.ManOWar);
+                Enemy.SpawnEnemy(new Vector2(Main.rand.NextFloat(BorderL, BorderR), player.position.Y + Main.ScreenSize.Y + (Main.ScreenSize.Y * 0.2f * Main.rand.NextFloat())),Vector2.Zero, pool[Main.rand.Next(pool.Count)]);
             }
+            //挙動のアップデート
             player.Update();
+            bullets = bullets.Where(e => e.isActive).ToList();
+            for (int i = 0; i < bullets.Count; i++)
+                bullets[i].Update();
             enemies = enemies.Where(e => e.isActive).ToList();//アクティブなものだけを残す
-            enemies.ForEach(e => e.Update());
+            for (int i = 0; i < enemies.Count; i++)
+                enemies[i].Update();
+            //全エンティティの挙動が完了後、衝突判定のアップデート
+            CheckEntityCollisions();
+            //Updateの内容を踏まえて各エンティティのフレームの更新
+            player.FrameUpdate();
+            enemies.ForEach(e => e.FrameUpdate());
+            //Debug.WriteLine(enemies.Count);
             gameCamera.Follow(player);
+        }
+        /// <summary>
+        /// 衝突周りの管理を見やすくするため
+        /// </summary>
+        public void CheckEntityCollisions()
+        {
+            //Enemy→弾丸
+            for (int i = 0; i < enemies.Count; i++)
+                for (int j = 0; j < bullets.Count; j++)
+                    if (enemies[i].isActive && bullets[j].isActive)
+                        enemies[i].CheckCollision(bullets[j]);
+            //Player→Enemy
+            for (int i = 0; i < enemies.Count; i++)
+                if (enemies[i].isActive)
+                    player.CheckCollision(enemies[i]);
         }
         public override void Draw()
         {
@@ -60,6 +98,7 @@ namespace NotDownwell.Scenes
             Main.spriteBatch.Begin(transformMatrix: gameCamera.Transform);
             //spriteBatch.Draw(AssetHelper.GetTexture("Placeholder"), Vector2.Zero, Color.Red);
             player.Draw(Main.spriteBatch);
+            bullets.ForEach(e => e.Draw(Main.spriteBatch));
             enemies.ForEach(e => e.Draw(Main.spriteBatch));
             //コンボ数
             if (player.combo >= 5)
@@ -78,6 +117,13 @@ namespace NotDownwell.Scenes
         {
             Vector2 pos;
             Texture2D texture;
+            //ダメージを受けた瞬間だけ暗くなるように、エリア全体を覆うよう描画
+            if (player.immune > Player.immuneMax - 4)
+            {
+                texture = AssetHelper.GetTexture("Pixel");
+                pos = new Vector2(BorderL - 8, 0);
+                Main.spriteBatch.Draw(texture, pos, new Rectangle(0, 0, (int)AreaSize, (int)Main.ScreenSize.Y), Color.Black);
+            }
             //枠
             {
                 texture = AssetHelper.GetTexture("Pixel");

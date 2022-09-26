@@ -1,5 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace NotDownwell.Scenes
 {
@@ -7,11 +9,14 @@ namespace NotDownwell.Scenes
     {
         public static float BorderY => Main.ScreenSize.Y / 2f + 64f;
         public Player player;
+        public List<Bullet> bullets;
         public int startTimer;
         public const int startTimerMax = 90;
         public override void DoInit()
         {
             player = new Player();
+            player.position.X += 80f;
+            bullets = new List<Bullet>();
         }
         public override void DoExit()
         {
@@ -19,6 +24,10 @@ namespace NotDownwell.Scenes
         public override void Update()
         {
             player.Update();
+            bullets = bullets.Where(e => e.isActive).ToList();
+            for (int i = 0; i < bullets.Count; i++)
+                bullets[i].Update();
+            player.FrameUpdate();
             if (startTimer > 0)
                 startTimer++;
             else if (player.position.Y > Main.ScreenSize.Y + 80f)
@@ -32,6 +41,7 @@ namespace NotDownwell.Scenes
         public override void Draw()
         {
             player.Draw(Main.spriteBatch);
+            bullets.ForEach(e => e.Draw(Main.spriteBatch));
             DrawGameUI();
         }
         public void DrawGameUI()

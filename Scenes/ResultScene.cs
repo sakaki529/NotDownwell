@@ -39,11 +39,11 @@ namespace NotDownwell.Scenes
                     timer = 340;
             }
             if (timer == 60)
-                Sound.Stamp.Play(0.5f, 0f, 0f);
+                Sound.Stamp.Play(0.1f, 0f, 0f);
             if (timer == 120 || timer == 160)
-                Sound.Hurt.Play(0.5f, 0f, 0f);
+                Sound.Hurt.Play(0.1f, 0f, 0f);
             if (timer == 220)
-                Sound.Jump.Play(0.5f, 0f, 0f);
+                Sound.Jump.Play(0.1f, 0f, 0f);
             if (timer > 340)
             {
                 if (Utils.KeyJustPressed(Keys.Escape))
@@ -58,7 +58,7 @@ namespace NotDownwell.Scenes
                             Main.instance.DoExit();
                             break;
                         case 1://retry
-                            Sound.Sel.Play(0.5f, 0f, 0f);
+                            Sound.Sel.Play(0.1f, 0f, 0f);
                             Main.gameScene.DoInit();
                             DoExit();
                             break;
