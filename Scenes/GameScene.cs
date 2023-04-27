@@ -2,7 +2,6 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 
 namespace NotDownwell.Scenes
@@ -22,7 +21,7 @@ namespace NotDownwell.Scenes
         public override void DoInit()
         {
             gameTime = 0;
-            player = new Player() { position = new Vector2(Main.ScreenSize.X / 2f, 0f) };//ゲームを通して使用するプレイヤーの宣言
+            player = new Player() { position = new Vector2(Main.ScreenSize.X / 2f, 0f) };// ゲームを通して使用するプレイヤーの宣言
             bullets = new List<Bullet>();
             enemies = new List<Enemy>();
             gameCamera = new Camera();

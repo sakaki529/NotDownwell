@@ -24,7 +24,7 @@ namespace NotDownwell
         //
         public static int GlobalTime;
         public static Vector2 ScreenSize => new Vector2(GraphicDeveice.Viewport.Width, GraphicDeveice.Viewport.Height);
-        public static KeyboardState OldKeyState;//キーボードの状態を保存
+        public static KeyboardState OldKeyState;// キーボードの状態を保存
         public Main()
         {
             instance = this;//起動時に自身をinstanceに格納することで外からアクセスしやすく
